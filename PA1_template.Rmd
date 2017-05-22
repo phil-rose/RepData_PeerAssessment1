@@ -1,25 +1,131 @@
----
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
----
+Project 1 Assignment - Reproducible Research
+============================================
 
+Here, we're going to load the activity data for the assignment:
 
-## Loading and preprocessing the data
+```{r}
+#Call to load the dataset:
+activity <- read.csv("C:/Users/Phil/Documents/Data_Science/Reproducible_Research/activity.csv")
 
+#Call to omit all NA values from the dataset
+activity_naremoved <- na.omit(activity)
 
+#Call to summarize the modified dataset
+summary(activity_naremoved)
+```
 
-## What is mean total number of steps taken per day?
+Next, we're going to calculate a few items from the dataset:
 
+First, we'll calculate the total number of steps taken per day. To do this, we'll use the aggregate function 
 
+```{r}
+#Calculates the total number of steps taken per day
+number_steps_per_date <- aggregate(activity_naremoved$steps, list(activity_naremoved$date), sum)
+colnames(number_steps_per_date) <- c("date", "steps")
+```
 
-## What is the average daily activity pattern?
+Next, we'll plot a histogram using this data
+```{r}
+#Plots a histogram of the data using library ggplot2
+library(ggplot2)
+ggplot(data=number_steps_per_date, aes(x=steps)) +
+        geom_histogram() +
+        ggtitle("Total Steps Taken Per Day") +
+        labs(x="Number of Steps per Day", y="Numbrt of Times per Day")
+```
 
+We now want to calculate the mean and median total steps per date from our dataset:
 
+```{r}
+#Calculate the mean and median
+mean_steps_per_date <- mean(number_steps_per_date$steps)
+median_steps_per_date <- median(number_steps_per_date$steps)
 
-## Imputing missing values
+#Outputs the mean and median
+mean_steps_per_date
+median_steps_per_date
+```
 
+```{r}
+#Time Series Plot
+steps_per_interval <- aggregate(activity_naremoved$steps, by = list(interval = as.factor(activity_naremoved$interval)), FUN=mean, na.rm=TRUE)
+steps_per_interval$interval <- as.integer(levels(steps_per_interval$interval)[steps_per_interval$interval])
+colnames(steps_per_interval) <- c("interval", "steps")
 
+time_series <- tapply(activity_naremoved$steps, activity_naremoved$interval, mean, na.rm = TRUE)
 
-## Are there differences in activity patterns between weekdays and weekends?
+plot(row.names(time_series), time_series, type = "l", xlab = "5-Min Interval", 
+    ylab = "Average Over All Days", main = "Average Number of Steps Taken", 
+    col ="gray")
+
+#Calculation of Max Interval
+max_interval <- steps_per_interval[which.max(steps_per_interval$steps),]
+max_interval
+```
+
+``` {r}
+#Calculates and returns the total count of NA values in the dataset
+total_na <- sum(is.na(activity))
+total_na
+
+#Aggregates a simplified dataset, similar to above
+number_steps_per_date_wna <- aggregate(activity$steps, list(activity$date), sum)
+colnames(number_steps_per_date_wna) <- c("date", "steps")
+
+#A loop that runs through the steps column of the dataset, inputting the mean steps per day where NA is present to create a new dataset
+for (i in 1:nrow(number_steps_per_date_wna)){
+        tmp <- number_steps_per_date_wna$steps[i]
+        if(is.na(tmp)){
+                number_steps_per_date_wna$steps[i] <- mean_steps_per_date
+        }
+}
+#Prints the header of the new dataset
+head(number_steps_per_date_wna)
+
+#Plots the new dataset
+ggplot(data=number_steps_per_date_wna, aes(x=steps)) +
+        geom_histogram() +
+        ggtitle("Total Steps Taken Per Day") +
+        labs(x="Number of Steps per Day", y="Numbrt of Times per Day")
+
+#Calculation of new mean and median
+new_mean <- mean(number_steps_per_date_wna$steps)
+new_median <- median(number_steps_per_date_wna$steps)
+
+new_mean
+new_median
+
+#The new value of the median differs slightly from the previous calculation, while the means have remained the same.
+#The result of imputing missing data on the estimates is very small, and arguably insigificant
+```     
+
+```{r}
+#Code to convert dates into Weekend or Weekdays, using as.Date and a for loop, with if call
+date_convert <- as.Date(activity_naremoved$date)
+weekdays_dataset <- weekdays(date_convert, abbreviate = TRUE)
+
+for (i in 1:length(weekdays_dataset)) {
+        tmp2 <- weekdays_dataset[i] 
+        if (tmp2 == "Sat") {
+                weekdays_dataset[i] <- "Weekend"
+        }
+                else if (tmp2 == "Sun") { 
+                        weekdays_dataset[i] <- "Weekend"        
+                }
+                else {
+                        weekdays_dataset[i] <- "Weekday"  
+                }
+}
+
+#Replace dates with Weekday or Weekend
+activity_naremoved_2 <- activity_naremoved
+activity_naremoved_2$date <- weekdays_dataset
+activity_naremoved_2$date <- factor(activity_naremoved_2$date)
+
+steps_per_day_2 <- aggregate(steps ~ interval + weekdays_dataset, data = activity_naremoved, FUN ="mean")
+names(steps_per_day_2) <- c("interval", "date", "steps")
+
+#Time Series Plot #2
+library(lattice)
+xyplot(steps_per_day_2$steps ~ steps_per_day_2$interval | steps_per_day_2$date, layout = c(1, 2), type = "l", xlab = "Interval", ylab = "Number of Steps")
+
