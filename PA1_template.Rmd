@@ -1,3 +1,7 @@
+---
+title: PA1_template
+output: md_document
+---
 Project 1 Assignment - Reproducible Research
 ============================================
 
